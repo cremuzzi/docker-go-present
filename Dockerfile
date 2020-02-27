@@ -1,10 +1,11 @@
-FROM golang:1.11.2-alpine3.8 AS builder
+FROM golang:1.14.0-alpine3.11 AS builder
 
-RUN apk add --no-cache --virtual .build-deps git \
+RUN apk add --no-cache --virtual .build-deps \
+         git \
     && go get golang.org/x/tools/cmd/present \
     && apk del .build-deps
 
-FROM alpine:3.8
+FROM alpine:3.11
 
 LABEL maintainer="Carlos Remuzzi <carlosremuzzi@gmail.com>"
 
