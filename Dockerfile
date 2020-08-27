@@ -1,9 +1,8 @@
-FROM golang:1.14.0-alpine3.11 AS builder
+FROM golang:1.15.0-alpine3.12 AS build
 
 RUN apk add --no-cache --virtual .build-deps \
          git \
-    && go get golang.org/x/tools/cmd/present \
-    && apk del .build-deps
+    && go get golang.org/x/tools/cmd/present
 
 FROM alpine:3.11
 
