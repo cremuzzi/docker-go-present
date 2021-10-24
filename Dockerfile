@@ -1,35 +1,25 @@
-FROM golang:1.15.2-alpine3.12 AS build
-
-ARG GOTOOLS_VERSION=v0.5.1
-
-ENV CGO_ENABLED=0 \
-    GOARCH=amd64 \
-    GOOS=linux
-
-RUN adduser -u 10001 -D present \
-    && mkdir -p src/golang.org/x/ \
-    && wget https://github.com/golang/tools/archive/gopls/${GOTOOLS_VERSION}.tar.gz \
-    && tar -xf ${GOTOOLS_VERSION}.tar.gz \
-    && rm ${GOTOOLS_VERSION}.tar.gz \
-    && mv tools-gopls-* tools-gopls \
-    && cd tools-gopls/cmd/present \
-    && go mod download \
-    && go build \
-      -a -ldflags '-s -w -extldflags "-static"' ./...
-
-FROM scratch as prod
-
-LABEL maintainer="Carlos Remuzzi <carlosremuzzi@gmail.com>"
-
-COPY --from=build /etc/passwd /etc/passwd
-COPY --from=build /go/tools-gopls/cmd/present/present /usr/bin/present
-COPY --from=build /go/tools-gopls/cmd/present/templates /var/lib/present/templates
-COPY --from=build /go/tools-gopls/cmd/present/static /var/lib/present/static
-
-WORKDIR /talk
-
+FROM golang:1.17-alpine3.14 as base
+ARG TOOLS_VERSION=v0.1.7
+ENV CGO_ENABLED=0
+ENV GOARCH=amd64
+ENV GOOS=linux
+RUN  adduser -u 1000 -D present \
+  && go install golang.org/x/tools/...@${TOOLS_VERSION} \
+  && mkdir -p /var/lib/present/ \
+  && mv /go/pkg/mod/golang.org/x/tools@${TOOLS_VERSION}/cmd/present/templates /var/lib/present/templates \
+  && mv /go/pkg/mod/golang.org/x/tools@${TOOLS_VERSION}/cmd/present/static /var/lib/present/static
 USER present
 
+# stage prod
+FROM scratch as prod
+LABEL maintainer="Carlos Remuzzi carlosremuzzi@gmail.com"
+LABEL org.label-schema.description="present"
+LABEL org.label-schema.name="present"
+LABEL org.label-schema.schema-version="1.0"
+COPY --from=base /etc/passwd /etc/passwd
+COPY --from=base /go/bin/present /usr/bin/present
+COPY --from=base /var/lib/present /var/lib/present
+WORKDIR /talk
+USER present
 EXPOSE 3999
-
 CMD ["present","-base","/var/lib/present","-http","0.0.0.0:3999"]
